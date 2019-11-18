@@ -27,7 +27,7 @@ NC='\033[0m'
 ### Welcome
 clear
 echo -e "${WHITE}============================================"
-echo -e "SafeNode Setup Tool ${PINK}v0.16.6${NC}"
+echo -e "SafeNode Setup Tool ${PINK}v0.16.7${NC}"
 echo -e "${WHITE}Special thanks to:${NC}"
 echo -e "${CYAN}@Team Safe"
 echo -e "@Safers"
@@ -186,7 +186,7 @@ fi
 ### Download bootstrap
 if [ ! -d ~/.safecoin/blocks ]; then
     echo -e "Grabbing the latest bootstrap (to speed up syncing)..."
-    wget -N http://safenodes.org/blockchain_txindex.zip
+    wget -N https://safepay.safecoin.org/blockchain_txindex.zip
     unzip -o ~/blockchain_txindex.zip -d ~/.safecoin
     rm ~/blockchain_txindex.zip
 fi
