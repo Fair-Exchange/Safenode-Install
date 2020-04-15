@@ -9,7 +9,7 @@ sudo apt-get update -y
 sudo apt-get install build-essential pkg-config libc6-dev m4 g++-multilib autoconf libtool ncurses-dev unzip git python python-zmq zlib1g-dev wget libcurl4-gnutls-dev bsdmainutils automake curl bc dc jq nano gpw -y
 
 ### Setup Vars
-GENPASS="$(date +%s | sha256sum | base64 | head -c 32 ; echo)"
+GENPASS="$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | base64)"
 confFile=~/.safecoin/safecoin.conf
 HIGHESTBLOCK="$(wget -nv -qO - https://explorer.safecoin.org/api/blocks\?limit=1 | jq .blocks[0].height)"
 
