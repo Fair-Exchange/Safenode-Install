@@ -6,7 +6,7 @@ cd ~
 ### Prereq
 echo -e "Setting up prerequisites and updating the server..."
 sudo apt-get update -y
-sudo apt-get install build-essential pkg-config libc6-dev m4 g++-multilib autoconf libtool ncurses-dev unzip git python python-zmq zlib1g-dev libcurl4-gnutls-dev bsdmainutils automake curl bc dc nano gpw -y
+sudo apt-get install build-essential pkg-config libc6-dev m4 g++-multilib autoconf libtool ncurses-dev unzip git python python-zmq zlib1g-dev libcurl4-gnutls-dev bsdmainutils automake curl bc dc nano -y
 
 ### Setup Vars
 GENPASS="$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | base64)"
@@ -220,9 +220,9 @@ if [ ! -f $confFile ]; then
 
     ### Write to safecoin.conf
     touch $confFile
-    rpcuser=$(gpw 1 30)
+    rpcuser=$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | md5sum | cut -c1-33)
     echo "rpcuser="$rpcuser >> $confFile
-    rpcpassword=$(gpw 1 30)
+    rpcpassword=$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | md5sum | cut -c1-33)
     echo "rpcpassword="$rpcpassword >> $confFile
     echo "addnode=explorer.safecoin.org" >> $confFile
     echo "addnode=explorer.deepsky.space" >> $confFile
