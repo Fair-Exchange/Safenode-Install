@@ -6,7 +6,7 @@ cd ~
 ### Prereq
 echo -e "Setting up prerequisites and updating the server..."
 sudo apt-get update -y
-sudo apt-get install build-essential pkg-config libc6-dev m4 g++-multilib autoconf libtool ncurses-dev unzip python python-zmq zlib1g-dev libcurl4-gnutls-dev bsdmainutils automake curl bc dc nano -y
+sudo apt-get install build-essential pkg-config m4 g++-multilib autoconf libtool ncurses-dev unzip zlib1g-dev libcurl4-gnutls-dev bsdmainutils automake curl bc dc -y
 
 ### Setup Vars
 GENPASS="$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | base64)"
