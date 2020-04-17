@@ -6,12 +6,12 @@ cd ~
 ### Prereq
 echo -e "Setting up prerequisites and updating the server..."
 sudo apt-get update -y
-sudo apt-get install build-essential pkg-config libc6-dev m4 g++-multilib autoconf libtool ncurses-dev unzip git python python-zmq zlib1g-dev wget libcurl4-gnutls-dev bsdmainutils automake curl bc dc jq nano gpw -y
+sudo apt-get install --no-install-recommends unzip curl lsof -y
 
 ### Setup Vars
-GENPASS="$(date +%s | sha256sum | base64 | head -c 32 ; echo)"
+GENPASS="$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | base64)"
 confFile=~/.safecoin/safecoin.conf
-HIGHESTBLOCK="$(wget -nv -qO - https://explorer.safecoin.org/api/blocks\?limit=1 | jq .blocks[0].height)"
+HIGHESTBLOCK=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
 
 ### Font Colors
 BLACK='\e[30m'
@@ -126,7 +126,7 @@ fi
 
 ### Fetch Params
 echo -e "Fetching Zcash-params..."
-bash -c "$(wget -qO - https://raw.githubusercontent.com/Fair-Exchange/safecoin/master/zcutil/fetch-params.sh)"
+curl https://raw.githubusercontent.com/Fair-Exchange/safecoin/master/zcutil/fetch-params.sh | sh
 
 ### Setup Swap
 echo -e "Adding swap if needed..."
@@ -155,23 +155,23 @@ read -p "Choose: " downloadOption
 ### Compile or Download based on user selection
 if [ "$downloadOption" == "1" ]; then
     ### Build Daemon
+    echo "Installing building dependencies..."
+    sudo apt-get install -y --no-install-recommends build-essential pkg-config m4 autoconf libtool automake
     echo -e "Begin compiling of daemon..."
-    if [ ! -d safecoin ]
-    then
-        cd ~ && git clone https://github.com/fair-exchange/safecoin --branch master --single-branch
-    else
-        cd safecoin && git pull
-    fi
-    cd safecoin
+    cd ~
+    curl -L https://github.com/Fair-Exchange/safecoin/archive/master.tar.gz | tar xz
+    cd safecoin-master
     ./zcutil/build.sh -j$(nproc)
     cd ~
-    cp safecoin/src/safecoind safecoin/src/safecoin-cli .
+    cp safecoin-master/src/safecoind safecoin/src/safecoin-cli .
     chmod +x safecoind safecoin-cli
     strip -s safecoin*
 else
+    echo "Installing dependencies..."
+    sudo apt-get install -y --no-install-recommends libgomp1
     ### Download Daemon
     echo -e "Grabbing the latest daemon..."
-    wget -N https://github.com/Fair-Exchange/safewallet/releases/download/data/binary_linux.zip -O ~/binary.zip
+    curl -L https://github.com/Fair-Exchange/safewallet/releases/download/data/binary_linux.zip -o ~/binary.zip
     unzip -o ~/binary.zip -d ~
     rm ~/binary.zip
     chmod +x safecoind safecoin-cli
@@ -186,7 +186,7 @@ fi
 ### Download bootstrap
 if [ ! -d ~/.safecoin/blocks ]; then
     echo -e "Grabbing the latest bootstrap (to speed up syncing)..."
-    wget -N https://safepay.safecoin.org/blockchain_txindex.zip
+    curl https://safepay.safecoin.org/blockchain_txindex.zip -o ~/blockchain_txindex.zip
     unzip -o ~/blockchain_txindex.zip -d ~/.safecoin
     rm ~/blockchain_txindex.zip
 fi
@@ -207,7 +207,7 @@ fi
 ### Final conf setup
 if [ ! -f $confFile ]; then
     ### Grab current height
-    HIGHESTBLOCK="$(wget -nv -qO - https://explorer.safecoin.org/api/blocks\?limit=1 | jq .blocks[0].height)"
+    HIGHESTBLOCK=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
     if [ -z "$HIGHESTBLOCK" ]
     then
         clear
@@ -220,9 +220,9 @@ if [ ! -f $confFile ]; then
 
     ### Write to safecoin.conf
     touch $confFile
-    rpcuser=$(gpw 1 30)
+    rpcuser=$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | md5sum | cut -c1-33)
     echo "rpcuser="$rpcuser >> $confFile
-    rpcpassword=$(gpw 1 30)
+    rpcpassword=$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | md5sum | cut -c1-33)
     echo "rpcpassword="$rpcpassword >> $confFile
     echo "addnode=explorer.safecoin.org" >> $confFile
     echo "addnode=explorer.deepsky.space" >> $confFile
@@ -331,7 +331,7 @@ read -p "Y/n: " -n 1 -r
 
 echo -e "${CYAN}Safecoind started...${NC} Waiting 2 minutes for startup to finish"
 sleep 120
-newHighestBlock="$(wget -nv -qO - https://explorer.safecoin.org/api/blocks\?limit=1 | jq .blocks[0].height)"
+newHighestBlock=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
 currentBlock="$(~/safecoin-cli getblockcount)"
 
 ### We need to add some failed start detection here with troubleshooting steps
@@ -352,7 +352,7 @@ do
     clear
     if [ -z "$newHighestBlockManual" ]
         then
-            newHighestBlock="$(wget -nv -qO - https://explorer.safecoin.org/api/blocks\?limit=1 | jq .blocks[0].height)"
+            newHighestBlock=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
         else
             newHighestBlock="$newHighestBlockManual"
     fi
@@ -383,7 +383,7 @@ echo -e "${WHITE}##################################################${NC}"
 echo
 
 ### Check balance
-BALANCE=$(~/safecoin-cli z_gettotalbalance | jq -r .total)
+BALANCE=$(~/safecoin-cli z_gettotalbalance | grep -o "total[^$]*" | grep -o "[\.0-9]*")
 if [[ "0.2" > $BALANCE ]]; then
     echo -e "${GREEN}Send ${CYAN}1${NC}${GREEN} SAFE to the address below. This will power the SafeNode for 1 year!${NC}"
     ### Generate address to fuel safenode
@@ -395,7 +395,7 @@ else
 fi
 
 echo
-echo -e "${WHITE}You can view your SafeNode rewards online at ${PINK}https://safenodes.org/address/$(~/safecoin-cli getnodeinfo | jq -r .SAFE_address)${NC}${WHITE}"
+echo -e "${WHITE}You can view your SafeNode rewards online at ${PINK}https://safenodes.org/address/$(~/safecoin-cli getnodeinfo | grep -o -e '"SAFE_address": [^,]*' | cut -c18-51)${NC}${WHITE}"
 echo
 echo -e "##################################################"
 echo
@@ -411,11 +411,11 @@ then
     echo -e "##################################################"
     echo
     echo -e "${WHITE}Fetching ${PINK}getnodeinfo${NC}${WHITE}"
-    ~/safecoin-cli getnodeinfo | jq
+    ~/safecoin-cli getnodeinfo
     echo -e "${NC}"
 else
     echo -e "${WHITE}No service was created... returning ${PINK}getnodeinfo${NC}${WHITE}"
-    ~/safecoin-cli getnodeinfo | jq
+    ~/safecoin-cli getnodeinfo
     echo -e "${NC}"
 fi
 
