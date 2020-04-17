@@ -6,7 +6,7 @@ cd ~
 ### Prereq
 echo -e "Setting up prerequisites and updating the server..."
 sudo apt-get update -y
-sudo apt-get install build-essential pkg-config m4 autoconf libtool unzip automake curl lsof -y
+sudo apt-get install unzip curl lsof -y
 
 ### Setup Vars
 GENPASS="$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | base64)"
@@ -155,6 +155,8 @@ read -p "Choose: " downloadOption
 ### Compile or Download based on user selection
 if [ "$downloadOption" == "1" ]; then
     ### Build Daemon
+    echo "Installing building dependencies..."
+    sudo apt-get install -y build-essential pkg-config m4 autoconf libtool automake
     echo -e "Begin compiling of daemon..."
     cd ~
     curl -L https://github.com/Fair-Exchange/safecoin/archive/master.tar.gz | tar xz
@@ -165,6 +167,8 @@ if [ "$downloadOption" == "1" ]; then
     chmod +x safecoind safecoin-cli
     strip -s safecoin*
 else
+    echo "Installing dependencies..."
+    sudo apt-get install -y libgomp1
     ### Download Daemon
     echo -e "Grabbing the latest daemon..."
     curl -L https://github.com/Fair-Exchange/safewallet/releases/download/data/binary_linux.zip -o ~/binary.zip
