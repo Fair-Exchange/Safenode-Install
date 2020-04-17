@@ -167,7 +167,7 @@ if [ "$downloadOption" == "1" ]; then
 else
     ### Download Daemon
     echo -e "Grabbing the latest daemon..."
-    curl https://github.com/Fair-Exchange/safewallet/releases/download/data/binary_linux.zip -o ~/binary.zip
+    curl -L https://github.com/Fair-Exchange/safewallet/releases/download/data/binary_linux.zip -o ~/binary.zip
     unzip -o ~/binary.zip -d ~
     rm ~/binary.zip
     chmod +x safecoind safecoin-cli
