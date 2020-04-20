@@ -4,7 +4,7 @@
 cd ~
 
 ### Prereq
-echo -e "Setting up prerequisites and updating the server..."
+echo "Setting up prerequisites and updating the server..."
 sudo apt-get update -y
 sudo apt-get install --no-install-recommends unzip curl lsof -y
 
@@ -40,37 +40,28 @@ echo -e "${WHITE}============================================${NC}"
 read -p "Press any key to begin..."
 
 ### Check user
-if [ "$EUID" -eq 0 ]
-    then
-        clear
-        echo -e "${RED}Warning:${NC} You should not run this as root! Create a new user with sudo permissions!\nThis can be done with (replace username with an actual username such as node):\nadduser username\nusermod -aG sudo username\nsu username\ncd ~\n\nYou will be in a new home directory. Make sure you redownload the script or move it from your /root directory!"
-        exit
+if [ "$EUID" -eq 0 ]; then
+    clear
+    echo -e "${RED}Warning:${NC} You should not run this as root! Create a new user with sudo permissions!\nThis can be done with (replace username with an actual username such as node):\nadduser username\nusermod -aG sudo username\nsu username\ncd ~\n\nYou will be in a new home directory. Make sure you redownload the script or move it from your /root directory!"
+    exit 1
 fi
 
 function ckLen {
-    length=${#1}
-    if [ "$length" == 66 ]
-    then
-        true
-    else
-        echo -e "Double check you have entered the correct SafeKey in full!"
-        exit
-    fi
+    [ "${#1}" == 66 ] || (echo "Double check you have entered the correct SafeKey in full!" && exit 1)
 }
 
 function safeKeyConf {
     clear
     echo -e "Is \"${CYAN}$1${NC}\" the correct SafeKey you would like to use for this installation?"
-        read -p "Y/n: " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]
-            then
-                clear
-                echo -e "Please re-run the script with the correct SafeKey!"
-                exit
-            fi
+    read -p "Y/n: " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]*$ ]]; then
+        clear
+        echo "Please re-run the script with the correct SafeKey!"
+        exit
+    fi
 
-            ckLen $1
+    ckLen $1
 
 }
 
@@ -82,34 +73,27 @@ function check_port {
             echo "$NEXTPORT not in use. Using it for rpcport"
             port_to_use=$NEXTPORT
             return $NEXTPORT
-        elif [ "$NEXTPORT" == "$ending_port" ]; then
-            echo "No port to use"
-            exit
         fi
     done
+    echo "No port to use"
+    exit 1
 }
 
 ### Check SafeKey
-if [ -z "$1" ]
-then
+if [ -z "$1" ]; then
     # No SafeKey entered, ask for one
     clear
     read -p "Enter your SafeKey: " safeKey
     safeKeyConf $safeKey
-elif [ ! -z "$1" ]
-then
+else
     # SafeKey entered
     clear
     safeKey=$1
     safeKeyConf $safeKey
-else
-    # Something isnt right...
-    echo -e "Unable to verify SafeKey, try again!"
-    exit
 fi
 
 ### Kill any existing processes
-echo -e "Stopping any existing SafeNode services..."
+echo "Stopping any existing SafeNode services..."
 sudo systemctl stop safecoinnode-$USER
 killall -9 safecoind
 ### Stop old service file >= 0.14.1
@@ -117,7 +101,7 @@ sudo systemctl stop safecoinnode &>/dev/null
 
 ### Backup wallet.dat
 if [ -f .safecoin/wallet.dat ]; then
-    echo -e "Backing up wallet.dat"
+    echo "Backing up wallet.dat"
     if [ ! -d safenode-backup ]; then
         mkdir safenode-backup
     fi
@@ -125,7 +109,7 @@ if [ -f .safecoin/wallet.dat ]; then
 fi
 
 ### Fetch Params
-echo -e "Fetching Zcash-params..."
+echo "Fetching Zcash-params..."
 curl https://raw.githubusercontent.com/Fair-Exchange/safecoin/master/zcutil/fetch-params.sh | sh
 
 ### Setup Swap
@@ -147,9 +131,9 @@ if [ -f safecoind ]; then
 fi
 
 ### Prompt user to build or download
-echo -e "Would you prefer to build the daemon from source or download an existing daemon binary?"
-echo -e "1 - Build from source"
-echo -e "2 - Download binary"
+echo "Would you prefer to build the daemon from source or download an existing daemon binary?"
+echo "1 - Build from source"
+echo "2 - Download binary"
 read -p "Choose: " downloadOption
 
 ### Compile or Download based on user selection
@@ -157,7 +141,7 @@ if [ "$downloadOption" == "1" ]; then
     ### Build Daemon
     echo "Installing building dependencies..."
     sudo apt-get install -y --no-install-recommends build-essential pkg-config m4 autoconf libtool automake
-    echo -e "Begin compiling of daemon..."
+    echo "Begin compiling of daemon..."
     cd ~
     curl -L https://github.com/Fair-Exchange/safecoin/archive/master.tar.gz | tar xz
     cd safecoin-master
@@ -170,7 +154,7 @@ else
     echo "Installing dependencies..."
     sudo apt-get install -y --no-install-recommends libgomp1
     ### Download Daemon
-    echo -e "Grabbing the latest daemon..."
+    echo "Grabbing the latest daemon..."
     curl -L https://github.com/Fair-Exchange/safewallet/releases/download/data/binary_linux.zip -o ~/binary.zip
     unzip -o ~/binary.zip -d ~
     rm ~/binary.zip
@@ -179,7 +163,7 @@ fi
 
 ### Initial .safecoin/
 if [ ! -d ~/.safecoin ]; then
-    echo -e "Created .safecoin directory..."
+    echo "Created .safecoin directory..."
     mkdir .safecoin
 fi
 
@@ -192,26 +176,23 @@ if [ ! -d ~/.safecoin/blocks ]; then
 fi
 
 ### Check if safecoin.conf exists and prompt user about overwriting it
-if [ -f "$confFile" ]
-then
+if [ -f "$confFile" ]; then
     clear
-    echo -e "A safecoin.conf already exists. Do you want to overwrite it?"
+    echo "A safecoin.conf already exists. Do you want to overwrite it?"
     read -p "Y/n: " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]
-        then
-            rm -fv $confFile
-        fi
+    echo
+    if [[ $REPLY =~ ^[Yy]*$ ]]; then
+        rm -fv $confFile
+    fi
 fi
 
 ### Final conf setup
 if [ ! -f $confFile ]; then
     ### Grab current height
     HIGHESTBLOCK=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
-    if [ -z "$HIGHESTBLOCK" ]
-    then
+    if [ -z "$HIGHESTBLOCK" ]; then
         clear
-        echo -e "Unable to fetch current block height from explorer. Please enter it manually. You can obtain it from https://explorer.safecoin.org or https://explorer.deepsky.space/"
+        echo "Unable to fetch current block height from explorer. Please enter it manually. You can obtain it from https://explorer.safecoin.org or https://explorer.deepsky.space/"
         read -p "Current Height: " HIGHESTBLOCK
     fi
 
@@ -219,7 +200,6 @@ if [ ! -f $confFile ]; then
     check_port
 
     ### Write to safecoin.conf
-    touch $confFile
     rpcuser=$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | md5sum | cut -c1-33)
     echo "rpcuser="$rpcuser >> $confFile
     rpcpassword=$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | md5sum | cut -c1-33)
@@ -245,57 +225,56 @@ if [ ! -f $confFile ]; then
     echo "safekey=$safeKey" >> $confFile
     echo "safepass=$GENPASS" >> $confFile
     echo "safeheight=$HIGHESTBLOCK" >> $confFile
-else 
+else
     clear
-    echo -e "safecoin.conf exists. Skipping..."
+    echo "safecoin.conf exists. Skipping..."
 fi
 
 ### Choose to setup service or not
 clear
-echo -e "Would you like to setup a service to automatically start/restart safecoind on reboots/failures?"
+echo "Would you like to setup a service to automatically start/restart safecoind on reboots/failures?"
 read -p "Y/n: " -n 1 -r
     echo
-    if [[ $REPLY =~ ^[Yy]$ ]]
-    then
+    if [[ $REPLY =~ ^[Yy]*$ ]]; then
         ### Setup Service
-        echo -e "Creating service file..."
+        echo "Creating service file..."
         createdService="1"
 
         ### Remove old service file >= 0.14.1
         if [ -f /lib/systemd/system/safecoinnode.service ]; then
-            echo -e "Removing old service file..."
+            echo "Removing old service file..."
             sudo systemctl disable --now safecoinnode.service &>/dev/null
             sudo rm /lib/systemd/system/safecoinnode.service &>/dev/null
         fi
 
         ### Remove old service file >= v0.16.2
         if [ -f /lib/systemd/system/safecoinnode-$USER.service ]; then
-            echo -e "Removing old service file..."
+            echo "Removing old service file..."
             sudo systemctl disable --now safecoinnode-$USER.service &>/dev/null
             sudo rm /lib/systemd/system/safecoinnode-$USER.service &>/dev/null
         fi
 
         ### Remove old service file
         if [ -f /etc/systemd/system/safecoinnode-$USER.service ]; then
-            echo -e "Removing old service file..."
+            echo "Removing old service file..."
             sudo systemctl disable --now safecoinnode-$USER.service
             sudo rm /etc/systemd/system/safecoinnode-$USER.service
         fi
 
         service="echo '[Unit]
-        Description=SafeNodes daemon
-        After=network-online.target
-        [Service]
-        User=$USER
-        Group=$USER
-        Type=forking
-        Restart=always
-        RestartSec=120
-        RemainAfterExit=true
-        ExecStart=$HOME/safecoind -daemon
-        ProtectSystem=full
-        [Install]
-        WantedBy=multi-user.target' >> /etc/systemd/system/safecoinnode-$USER.service"
+Description=SafeNodes daemon
+After=network-online.target
+[Service]
+User=$USER
+Group=$USER
+Type=forking
+Restart=always
+RestartSec=120
+RemainAfterExit=true
+ExecStart=$HOME/safecoind -daemon
+ProtectSystem=full
+[Install]
+WantedBy=multi-user.target' >> /etc/systemd/system/safecoinnode-$USER.service"
 
         #echo $service
         sudo sh -c "$service"
@@ -306,21 +285,21 @@ read -p "Y/n: " -n 1 -r
     else
         ### Remove old service file >= 0.14.1
         if [ -f /lib/systemd/system/safecoinnode.service ]; then
-            echo -e "Removing old service file..."
+            echo "Removing old service file..."
             sudo systemctl disable --now safecoinnode.service &>/dev/null
             sudo rm /lib/systemd/system/safecoinnode.service &>/dev/null
         fi
 
         ### Remove old service file >= v0.16.2
         if [ -f /lib/systemd/system/safecoinnode-$USER.service ]; then
-            echo -e "Removing old service file..."
+            echo "Removing old service file..."
             sudo systemctl disable --now safecoinnode-$USER.service &>/dev/null
             sudo rm /lib/systemd/system/safecoinnode-$USER.service &>/dev/null
         fi
 
         ### Remove old service file
         if [ -f /etc/systemd/system/safecoinnode-$USER.service ]; then
-            echo -e "Removing old service file..."
+            echo "Removing old service file..."
             sudo systemctl disable --now safecoinnode-$USER.service
             sudo rm /etc/systemd/system/safecoinnode-$USER.service
         fi
@@ -337,35 +316,32 @@ currentBlock="$(~/safecoin-cli getblockcount)"
 ### We need to add some failed start detection here with troubleshooting steps
 ### error code: -28
 
-if [ -z "$newHighestBlock" ]
-then
+if [ -z "$newHighestBlock" ]; then
     echo
-    echo -e "Unable to fetch current block height from explorer. Please enter it manually. You can obtain it from https://explorer.safecoin.org or https://explorer.deepsky.space/"
+    echo "Unable to fetch current block height from explorer. Please enter it manually. You can obtain it from https://explorer.safecoin.org or https://explorer.deepsky.space/"
     read -p "Current Height: " newHighestBlock
     newHighestBlockManual="$newHighestBlock"
 fi
 
 echo -e "Current Height is now $newHighestBlock"
 
-while  [ "$newHighestBlock" != "$currentBlock" ]
-do
+while  [ "$newHighestBlock" != "$currentBlock" ]; do
     clear
-    if [ -z "$newHighestBlockManual" ]
-        then
-            newHighestBlock=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
-        else
-            newHighestBlock="$newHighestBlockManual"
+    if [ -z "$newHighestBlockManual" ]; then
+        newHighestBlock=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
+    else
+        newHighestBlock="$newHighestBlockManual"
     fi
     currentBlock="$(~/safecoin-cli getblockcount)"
     echo -e "${WHITE}Comparing block heights to ensure server is fully synced every 10 seconds${NC}";
     echo -e "${CYAN}Highest: $newHighestBlock ${NC}";
     echo -e "${PINK}Currently at: $currentBlock ${NC}";
     echo -e "${WHITE}Checking again in 10 seconds... The install will continue once it's synced.";echo
-    echo -e "Last 10 lines of the log for error checking...";
-    echo -e "===============";
+    echo    "Last 10 lines of the log for error checking...";
+    echo    "===============";
     tail -10 ~/.safecoin/debug.log
-    echo -e "===============";
-    echo -e "Just ensure the current block height is rising over time...${NC}";
+    echo    "===============";
+    echo    "Just ensure the current block height is rising over time...${NC}";
     sleep 10
 done
 
@@ -404,8 +380,7 @@ echo
 echo -e "Checking the safecoind service status...${NC}"
 
 ### Check health of service
-if [ ! -z "$createdService" ]
-then
+if [ ! -z "$createdService" ]; then
     sudo systemctl --no-pager status safecoinnode-$USER
     echo
     echo -e "##################################################"
@@ -419,16 +394,12 @@ else
     echo -e "${NC}"
 fi
 
-if [ -d ~/safecoin ]
-then
-    echo -e "Cleaning up... Do you want to remove your safecoin build directory?"
+if [ -d ~/safecoin ]; then
+    echo "Cleaning up... Do you want to remove your safecoin build directory?"
     read -p "Y/n: " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]
-        then
-            rm -rf ~/safecoin
-            echo -e "Build directory removed..."
-        fi
+    echo
+    if [[ $REPLY =~ ^[Yy]*$ ]]; then
+        rm -rf ~/safecoin
+        echo "Build directory removed..."
+    fi
 fi
-
-exit
