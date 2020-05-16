@@ -27,13 +27,14 @@ NC='\033[0m'
 ### Welcome
 clear
 echo -e "${WHITE}============================================"
-echo -e "SafeNode Setup Tool ${PINK}v0.16.7${NC}"
+echo -e "SafeNode Setup Tool ${PINK}v0.16.8${NC}"
 echo -e "${WHITE}Special thanks to:${NC}"
 echo -e "${CYAN}@Team Safe"
 echo -e "@Safers"
 echo -e "Miodrag"
 echo -e "Oleksandr"
 echo -e "Eternity"
+echo -e "3DA4C300"
 echo -e "Potato${NC}"
 echo -e "${WHITE}============================================${NC}"
 
@@ -341,7 +342,7 @@ while  [ "$newHighestBlock" != "$currentBlock" ]; do
     echo    "===============";
     tail -10 ~/.safecoin/debug.log
     echo    "===============";
-    echo    "Just ensure the current block height is rising over time...${NC}";
+    echo    "Just ensure the current block height is rising over time... ${NC}";
     sleep 10
 done
 
