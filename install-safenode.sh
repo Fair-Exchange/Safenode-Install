@@ -11,7 +11,9 @@ sudo apt-get install --no-install-recommends unzip curl lsof -y
 ### Setup Vars
 GENPASS="$(dd if=/dev/urandom bs=33 count=1 2>/dev/null | base64)"
 confFile=~/.safecoin/safecoin.conf
-HIGHESTBLOCK=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
+HIGHESTBLOCK=$(curl -sSL https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
+BINARYDL="https://github.com/Fair-Exchange/safewallet/releases/download/v0.2.9/linux-binaries-safecoinwallet-v0.2.9.tar.gz"
+BOOTSTRAP="https://safepay.safecoin.org/blockchain_txindex.zip"
 
 ### Font Colors
 BLACK='\e[30m'
@@ -27,7 +29,7 @@ NC='\033[0m'
 ### Welcome
 clear
 echo -e "${WHITE}============================================"
-echo -e "SafeNode Setup Tool ${PINK}v0.16.8${NC}"
+echo -e "SafeNode Setup Tool ${PINK}v0.16.9${NC}"
 echo -e "${WHITE}Special thanks to:${NC}"
 echo -e "${CYAN}@Team Safe"
 echo -e "@Safers"
@@ -111,7 +113,7 @@ fi
 
 ### Fetch Params
 echo "Fetching Zcash-params..."
-curl https://raw.githubusercontent.com/Fair-Exchange/safecoin/master/zcutil/fetch-params.sh | sh
+curl -sSL https://raw.githubusercontent.com/Fair-Exchange/safecoin/master/zcutil/fetch-params.sh | bash
 
 ### Setup Swap
 echo -e "Adding swap if needed..."
@@ -144,11 +146,11 @@ if [ "$downloadOption" == "1" ]; then
     sudo apt-get install -y --no-install-recommends build-essential pkg-config m4 autoconf libtool automake
     echo "Begin compiling of daemon..."
     cd ~
-    curl -L https://github.com/Fair-Exchange/safecoin/archive/master.tar.gz | tar xz
+    curl -sSL https://github.com/Fair-Exchange/safecoin/archive/master.tar.gz | tar xz
     cd safecoin-master
     ./zcutil/build.sh -j$(nproc)
     cd ~
-    cp safecoin-master/src/safecoind safecoin/src/safecoin-cli .
+    cp safecoin-master/src/safecoind safecoin-master/src/safecoin-cli .
     chmod +x safecoind safecoin-cli
     strip -s safecoin*
 else
@@ -156,9 +158,10 @@ else
     sudo apt-get install -y --no-install-recommends libgomp1
     ### Download Daemon
     echo "Grabbing the latest daemon..."
-    curl -L https://github.com/Fair-Exchange/safewallet/releases/download/data/binary_linux.zip -o ~/binary.zip
-    unzip -o ~/binary.zip -d ~
-    rm ~/binary.zip
+    curl -L $BINARYDL -o ~/binary.tar.gz
+    tar xvzf binary.tar.gz
+    rm ~/binary.tar.gz
+    find . -type f \( -name "safecoind" -o -name "safecoin-cli" \) -exec mv '{}' ~/ \;
     chmod +x safecoind safecoin-cli
 fi
 
@@ -171,7 +174,7 @@ fi
 ### Download bootstrap
 if [ ! -d ~/.safecoin/blocks ]; then
     echo -e "Grabbing the latest bootstrap (to speed up syncing)..."
-    curl https://safepay.safecoin.org/blockchain_txindex.zip -o ~/blockchain_txindex.zip
+    curl -L $BOOTSTRAP -o ~/blockchain_txindex.zip
     unzip -o ~/blockchain_txindex.zip -d ~/.safecoin
     rm ~/blockchain_txindex.zip
 fi
@@ -190,7 +193,7 @@ fi
 ### Final conf setup
 if [ ! -f $confFile ]; then
     ### Grab current height
-    HIGHESTBLOCK=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
+    HIGHESTBLOCK=$(curl -sSL https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
     if [ -z "$HIGHESTBLOCK" ]; then
         clear
         echo "Unable to fetch current block height from explorer. Please enter it manually. You can obtain it from https://explorer.safecoin.org or https://explorer.deepsky.space/"
@@ -311,7 +314,7 @@ WantedBy=multi-user.target' >> /etc/systemd/system/safecoinnode-$USER.service"
 
 echo -e "${CYAN}Safecoind started...${NC} Waiting 2 minutes for startup to finish"
 sleep 120
-newHighestBlock=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
+newHighestBlock=$(curl -sSL https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
 currentBlock="$(~/safecoin-cli getblockcount)"
 
 ### We need to add some failed start detection here with troubleshooting steps
@@ -329,7 +332,7 @@ echo -e "Current Height is now $newHighestBlock"
 while  [ "$newHighestBlock" != "$currentBlock" ]; do
     clear
     if [ -z "$newHighestBlockManual" ]; then
-        newHighestBlock=$(curl https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
+        newHighestBlock=$(curl -sSL https://explorer.safecoin.org/api/blocks/\?limit=1 | grep -o '"height":[0-9]*' | cut -c10-)
     else
         newHighestBlock="$newHighestBlockManual"
     fi
@@ -338,11 +341,11 @@ while  [ "$newHighestBlock" != "$currentBlock" ]; do
     echo -e "${CYAN}Highest: $newHighestBlock ${NC}";
     echo -e "${PINK}Currently at: $currentBlock ${NC}";
     echo -e "${WHITE}Checking again in 10 seconds... The install will continue once it's synced.";echo
-    echo    "Last 10 lines of the log for error checking...";
-    echo    "===============";
+    echo -e "Last 10 lines of the log for error checking...";
+    echo -e "===============${NC}";
     tail -10 ~/.safecoin/debug.log
-    echo    "===============";
-    echo    "Just ensure the current block height is rising over time... ${NC}";
+    echo -e "${WHITE}===============";
+    echo -e "Just ensure the current block height is rising over time... ${NC}";
     sleep 10
 done
 
